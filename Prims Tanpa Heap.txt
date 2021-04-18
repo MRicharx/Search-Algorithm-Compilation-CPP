@@ -1,0 +1,213 @@
+// Prim's Algorithm in C++
+
+#include <cstring>
+#include <iostream>
+#include<fstream>
+#include<string>
+#include<windows.h>
+#include <time.h> 
+#include<stdlib.h>
+#include<iomanip>
+#include<chrono>
+using namespace std;
+using namespace std::chrono;
+
+#define INF 9999999
+
+// number of vertices in grapj
+
+// create a 2d array of size 5x5
+//for adjacency CFile to represent graph
+
+int counter_jumlah_data(string namafile) {
+    int counter = 0;
+    fstream file_handler(namafile, ios::in);
+    if (file_handler.is_open())
+    {
+        file_handler >> counter;
+    }
+    else
+    {
+        cout << "file eror" << endl;
+    }
+    return counter;
+
+}
+
+void input_to_array(string namafile, int length, int** arr) {
+    fstream file_handler(namafile, ios::in);
+    if (file_handler.is_open())
+    {
+        int tmp;
+        file_handler >> tmp;
+        while (!file_handler.eof())
+        {
+            for (int i = 0; i < length; i++)
+            {
+                for (int j = 0; j < length; j++)
+                {
+                    file_handler >> arr[i][j];
+                }
+            }
+        }
+        file_handler.close();
+    }
+    else
+    {
+        cout << "file eror" << endl;
+    }
+}
+
+void display(int** arr, int length) {
+    for (int i = 0; i < length; i++)
+    {
+        for (int j = 0; j < length; j++)
+        {
+            cout << arr[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
+void output_to_file(string namafile, int length, int weight, int** arr) {
+    fstream file_handler(namafile, ios::out);
+    if (file_handler.is_open())
+    {
+        file_handler << length << " " << weight << endl;
+        for (int i = 0; i < length; i++)
+        {
+            for (int j = 0; j < length; j++)
+            {
+                file_handler << arr[i][j] << " ";
+            }file_handler << endl;
+        }
+        file_handler.close();
+    }
+    else
+    {
+        cout << "file eror" << endl;
+    }
+}
+
+int main() {
+    string nama_file;
+    int** array;
+    int panjang;
+    char t1, t2;
+    int** container;
+
+    //LOOP FILE 1 2 3
+    for (int a = 0; a < 3; a++)
+    {
+        t1 = 49 + a;
+
+        //LOOP FILE a b
+        for (int b = 0; b < 2; b++)
+        {
+            t2 = 97 + b;
+
+            //Generate Nama File
+            nama_file = "graph";
+            nama_file += t1;
+            nama_file += t2;
+            nama_file += ".txt";
+
+            cout << "Prims Algorithm Tanpa Heap - " << nama_file << endl;
+            panjang = counter_jumlah_data(nama_file);
+
+            array = new int* [panjang];
+            container = new int* [panjang];
+            for (int i = 0; i < panjang; i++)
+            {
+                array[i] = new int[panjang];
+                container[i] = new int[panjang];
+            }
+            input_to_array(nama_file, panjang, array);
+
+
+            int total = 0;
+            int no_edge;  // number of edge
+
+            // create a array to track selected vertex
+            // selected will become true otherwise false
+            int* selected;
+            selected = new int[panjang];
+
+            // set selected false initially
+            memset(selected, false, sizeof(int) * panjang);
+
+            // set number of edge to 0
+            no_edge = 0;
+
+            // the number of egde in minimum spanning tree will be
+            // always less than (V -1), where V is number of vertices in
+            //graph
+
+            // choose 0th vertex and make it true
+            selected[0] = true;
+
+            int x;  //  row number
+            int y;  //  col number
+
+            // print for edge and weight
+            cout << "Edge"
+                << " : "
+                << "Weight";
+            cout << endl;
+            for (int i = 0; i < panjang; i++)
+                for (int j = 0; j < panjang; j++)
+                    container[i][j] = 0;
+
+            auto start = high_resolution_clock::now();
+
+            while (no_edge < panjang - 1) {
+                //For every vertex in the set S, find the all adjacent vertices
+                // , calculate the distance from the vertex selected at step 1.
+                // if the vertex is already in the set S, discard it otherwise
+                //choose another vertex nearest to selected vertex  at step 1.
+
+                int min = INF;
+                x = 0;
+                y = 0;
+
+                for (int i = 0; i < panjang; i++) {
+                    if (selected[i]) {
+                        for (int j = 0; j < panjang; j++) {
+                            if (!selected[j] && array[i][j]) {  // not in selected and there is an edge
+                                if (min > array[i][j]) {
+                                    min = array[i][j];
+                                    x = i;
+                                    y = j;
+                                }
+                            }
+                        }
+                    }
+                }
+                total += array[x][y];
+                cout << x << " - " << y << " :  " << array[x][y];
+                container[x][y] = array[x][y];
+                cout << endl;
+                selected[y] = true;
+                no_edge++;
+            }
+
+            cout << "Total Weight : " << total << endl;
+
+            auto end = high_resolution_clock::now();
+            auto totalrtime = duration_cast<microseconds>(end - start);
+            cout << "running time : " << double(totalrtime.count()) / 1000 << " ms" << endl;
+
+            //NAMA DAN LOAD FILE
+            nama_file = "hasilGraph";
+            nama_file += t1;
+            nama_file += t2;
+            nama_file += ".txt";
+            output_to_file(nama_file, panjang, total, container);
+
+            system("pause");
+            system("cls");
+        }
+    }
+
+    return 0;
+}

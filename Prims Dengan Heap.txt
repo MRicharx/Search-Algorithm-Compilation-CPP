@@ -1,0 +1,200 @@
+#include <stdio.h>
+#include <limits.h>
+#include <iostream>
+#include<chrono>
+#include<fstream>
+
+using namespace std;
+
+// Number of vertices in the graph
+
+// A utility function to find the vertex with minimum key value, from
+// the set of vertices not yet included in MST
+int minKey(int key[], bool mstSet[], int V)
+{
+    // Initialize min value
+    int min = INT_MAX, min_index;
+
+    for (int v = 0; v < V; v++)
+        if (mstSet[v] == false && key[v] < min)
+            min = key[v], min_index = v;
+
+    return min_index;
+}
+
+// A utility function to print the constructed MST stored in parent[]
+int printMST(int parent[], int n, int** container, int** graph, int V)
+{
+    int total = 0;
+    cout << "Edge   Weight\n";
+    for (int i = 1; i < V; i++)
+    {
+        printf("%d - %d    %d \n", parent[i], i, graph[i][parent[i]]);
+        container[parent[i]][i] = graph[i][parent[i]];
+        total += graph[i][parent[i]];
+    }
+    return total;
+}
+
+// Function to construct and print MST for a graph represented using adjacency
+// matrix representation
+int primMST(int** graph, int** container, int V)
+{
+    int* parent;
+    parent = new int[V];// Array to store constructed MST
+    int* key;
+    key = new int[V];// Key values used to pick minimum weight edge in cut
+    bool* mstSet;
+    mstSet = new bool[V];// To represent set of vertices not yet included in MST
+
+    // Initialize all keys as INFINITE
+    for (int i = 0; i < V; i++)
+        key[i] = INT_MAX, mstSet[i] = false;
+
+    // Always include first 1st vertex in MST.
+    key[0] = 0; // Make key 0 so that this vertex is picked as first vertex
+    parent[0] = -1; // First node is always root of MST
+
+    // The MST will have V vertices
+    for (int count = 0; count < V - 1; count++)
+    {
+        // Pick thd minimum key vertex from the set of vertices
+        // not yet included in MST
+        int u = minKey(key, mstSet, V);
+
+        // Add the picked vertex to the MST Set
+        mstSet[u] = true;
+
+        // Update key value and parent index of the adjacent vertices of
+        // the picked vertex. Consider only those vertices which are not yet
+        // included in MST
+        for (int v = 0; v < V; v++)
+
+            // graph[u][v] is non zero only for adjacent vertices of m
+            // mstSet[v] is false for vertices not yet included in MST
+            // Update the key only if graph[u][v] is smaller than key[v]
+            if (graph[u][v] && mstSet[v] == false && graph[u][v] < key[v])
+                parent[v] = u, key[v] = graph[u][v];
+    }
+
+    // print the constructed MST
+    return printMST(parent, V, container, graph, V);
+}
+
+
+void input_to_array(string namafile, int length, int** arr) {
+    fstream file_handler(namafile, ios::in);
+    if (file_handler.is_open())
+    {
+        int tmp;
+        file_handler >> tmp;
+        while (!file_handler.eof())
+        {
+            for (int i = 0; i < length; i++)
+            {
+                for (int j = 0; j < length; j++)
+                {
+                    file_handler >> arr[i][j];
+                }
+            }
+        }
+        file_handler.close();
+    }
+    else
+    {
+        cout << "file eror" << endl;
+    }
+}
+
+void output_to_file(string namafile, int length, int weight, int** arr) {
+    fstream file_handler(namafile, ios::out);
+    if (file_handler.is_open())
+    {
+        file_handler << length << " " << weight << endl;
+        for (int i = 0; i < length; i++)
+        {
+            for (int j = 0; j < length; j++)
+            {
+                file_handler << arr[i][j] << " ";
+            }file_handler << endl;
+        }
+        file_handler.close();
+    }
+    else
+    {
+        cout << "file eror" << endl;
+    }
+}
+
+// driver program to test above function
+int main()
+{
+    string nama_file;
+    int** array;
+    int panjang;
+    char t1, t2;
+    int** container; int total = 0;
+
+    //LOOP FILE 1 2 3
+    for (int a = 0; a < 3; a++)
+    {
+        t1 = 49 + a;
+
+        //LOOP FILE a b
+        for (int b = 0; b < 2; b++)
+        {
+            t2 = 97 + b;
+
+            //Generate Nama File
+            nama_file = "graph";
+            nama_file += t1;
+            nama_file += t2;
+            nama_file += ".txt";
+
+            cout << "Prims Algorithm Heap -" << nama_file << endl;
+
+            if (t1 == '1')
+                panjang = 8;
+            else if (t1 == '2')
+                panjang = 30;
+            else if (t1 == '3')
+                panjang = 100;
+
+            container = new int* [panjang];
+            array = new int* [panjang];
+            for (int i = 0; i < panjang; i++)
+            {
+                container[i] = new int[panjang];
+                array[i] = new int[panjang];
+            }
+
+            input_to_array(nama_file, panjang, array);
+            for (int i = 0; i < panjang; i++)
+                for (int j = 0; j < panjang; j++)
+                    container[i][j] = 0;
+
+            auto start = chrono::high_resolution_clock::now();
+
+            // Print the solution
+            total = primMST(array, container, panjang);
+
+
+            auto end = chrono::high_resolution_clock::now();
+            auto totalrtime = chrono::duration_cast<chrono::microseconds>(end - start);
+            cout << "Total Weight: " << total << endl;
+            cout << "running time : " << double(totalrtime.count()) / 1000 << " ms" << endl;
+
+            //NAMA DAN LOAD FILE
+            nama_file = "hasilGraphHeap";
+            nama_file += t1;
+            nama_file += t2;
+            nama_file += ".txt";
+            output_to_file(nama_file, panjang, total, container);
+
+            system("pause");
+            system("cls");
+        }
+    }
+
+    return 0;
+}

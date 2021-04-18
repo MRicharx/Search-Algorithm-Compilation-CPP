@@ -1,0 +1,270 @@
+#include<iostream>
+#include<queue>
+#include<list>
+#include<stack>
+#include<set>
+#include<math.h>
+
+using namespace std;
+
+int const ROW=9;
+int const COL=10;
+
+struct Coor
+{
+	Coor()
+	{
+		x = 0;
+		y = 0;
+	}
+
+	void setCoor(int x, int y)
+	{
+		this->x = x;
+		this->y = y;
+	}
+
+	int x;
+	int y;
+};
+
+Coor dest;
+
+struct Grid
+{
+	double distance;
+	Coor coor;
+};
+
+struct Cell
+{
+	int parent_i, parent_j;
+
+	double f, g, h;
+};
+
+bool checkValid(Coor coor)
+{
+	if (coor.x < 0 || coor.x >= ROW)
+		return false;
+	if (coor.y < 0 || coor.y >= COL)
+		return false;
+	return true;
+}
+
+bool checkBlocked(int map[][COL],Coor coor)
+{
+	if (map[coor.x][coor.y] == 0)
+		return true;
+	return false;
+}
+
+bool checkDestination(Coor coor,Coor dest)
+{
+	if (coor.x == dest.x && coor.y == dest.y)
+		return true;
+	return false;
+}
+
+//hitung jarak state dengan distance
+double calculateRange(Coor source, Coor dest)
+{
+	double xs = source.x - dest.x;
+	double xy = source.y - dest.y;
+	return (sqrt(pow(xs,2)+pow(xy,2)));
+}
+
+void trace(Cell cellDetail[][COL],Coor dest)
+{
+	cout << "Path: " << endl;
+	int r=dest.x, c=dest.y;
+
+	stack<Coor> Path;
+	Coor temp;
+
+	while (!(cellDetail[r][c].parent_i==r && cellDetail[r][c].parent_j==c))
+	{
+		temp.setCoor(r, c);
+		Path.push(temp);
+
+		int temp_row = cellDetail[r][c].parent_i;
+		int temp_col = cellDetail[r][c].parent_j;
+		r = temp_row;
+		c = temp_col;
+	}
+
+	temp.setCoor(r, c);
+	Path.push(temp);
+	while (!Path.empty())
+	{
+		temp = Path.top();
+		Path.pop();
+		cout << temp.x << "," << temp.y <<endl;
+	}
+	cout << endl;
+}
+
+Coor getDirection(int x)
+{
+	Coor temp;
+	switch (x)
+	{
+	case 0:
+		temp.setCoor(-1, 0);
+		break;
+	case 1:
+		temp.setCoor(1, 0);
+		break;
+	case 2:
+		temp.setCoor(0, 1);
+		break;
+	case 3:
+		temp.setCoor(0, -1);
+		break;
+	case 4:
+		temp.setCoor(-1, 1);
+		break;
+	case 5:
+		temp.setCoor(-1, -1);
+		break;
+	case 6:
+		temp.setCoor(1, 1);
+		break;
+	case 7:
+		temp.setCoor(1, -1);
+		break;
+	}
+	return temp;
+}
+
+void aSearch(int map[][COL], Coor source, Coor dest)
+{
+
+	//cek validasi koordinat
+	if (checkDestination(source, dest))
+	{
+		cout << "Sudah di tujuan" << endl;
+		return;
+	}
+	if (checkValid(source) == false)
+	{
+		cout << "Koordinat source tidak valid" << endl;
+		return;
+	}
+	if (checkValid(dest) == false)
+	{
+		cout << "Koordinat destinasi tidak valid" << endl;
+		return;
+	}
+
+	bool checkedList[ROW][COL];
+	memset(checkedList, false, sizeof(checkedList));
+	Cell cellDetail[ROW][COL];
+
+	//inisialisasi
+	int i, j;
+	for (i = 0; i < ROW; i++)
+	{
+		for (j = 0; j < COL; j++)
+		{
+			cellDetail[i][j].f = FLT_MAX;
+			cellDetail[i][j].g = FLT_MAX;
+			cellDetail[i][j].h = FLT_MAX;
+			cellDetail[i][j].parent_i = -1;
+			cellDetail[i][j].parent_j = -1;
+		}
+	}
+
+	//inisialisasi starting point 
+	i = source.x; j = source.y;
+	cellDetail[i][j].f = 0.0;
+	cellDetail[i][j].g = 0.0;
+	cellDetail[i][j].h = 0.0;
+	cellDetail[i][j].parent_i = i;
+	cellDetail[i][j].parent_j = j;
+
+	bool goal = false;
+	Grid temp;
+	temp.distance = 0.0; temp.coor.setCoor(i, j);
+
+	queue <Grid> openList;
+	openList.push(temp);
+
+
+	while (!openList.empty())
+	{
+		//ambil titik
+		Grid point = openList.front();
+		openList.pop();
+
+		i = point.coor.x;
+		j = point.coor.y;
+		checkedList[i][j] = true;
+
+		double newF, newG, newH;
+
+		for (int k = 0; k < 8; k++)
+		{
+			Coor dir;
+			dir=getDirection(k);
+			Coor tempPoint;
+			tempPoint.setCoor(i + dir.x, j + dir.y);
+
+			if (checkValid(tempPoint) == true && checkBlocked(map,tempPoint)==false)
+			{
+				if (checkDestination(tempPoint,dest) == true)
+				{
+					cellDetail[tempPoint.x][tempPoint.y].parent_i = i;
+					cellDetail[tempPoint.x][tempPoint.y].parent_j = j;
+					cout << "Destination Found" << endl;
+					trace(cellDetail,dest);
+					goal = true;
+					return;
+				}
+				else if (checkedList[tempPoint.x][tempPoint.y] == false && map[tempPoint.x][tempPoint.y]==1)
+				{
+					newG = cellDetail[i][j].g + 1.0;
+					newH = calculateRange(tempPoint, dest);
+					newF = newG + newH;
+
+					if (cellDetail[tempPoint.x][tempPoint.y].f == FLT_MAX || cellDetail[tempPoint.x][tempPoint.y].f > newF)
+					{
+						temp.distance = newF; temp.coor.setCoor(tempPoint.x, tempPoint.y);
+						openList.push(temp);
+
+						//update
+						cellDetail[tempPoint.x][tempPoint.y].f = newF;
+						cellDetail[tempPoint.x][tempPoint.y].g = newG;
+						cellDetail[tempPoint.x][tempPoint.y].h = newH;
+						cellDetail[tempPoint.x][tempPoint.y].parent_i = i;
+						cellDetail[tempPoint.x][tempPoint.y].parent_j = j;
+					}
+
+				}
+
+			}
+		}
+	}
+	if (goal == false)
+		cout << "Destinasi tidak ditemukan" << endl;
+	return;
+}
+
+void main()
+{
+	int map[ROW][COL]
+		= { { 1, 0, 1, 1, 1, 1, 0, 1, 1, 1 },
+			{ 1, 1, 1, 0, 1, 1, 1, 0, 1, 1 },
+			{ 1, 1, 1, 0, 1, 1, 0, 1, 0, 1 },
+			{ 0, 0, 1, 0, 1, 0, 0, 0, 0, 1 },
+			{ 1, 1, 1, 0, 1, 1, 1, 0, 1, 0 },
+			{ 1, 0, 1, 1, 1, 1, 0, 1, 0, 0 },
+			{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 1 },
+			{ 1, 0, 1, 1, 1, 1, 0, 1, 1, 1 },
+			{ 1, 1, 1, 0, 0, 0, 1, 0, 0, 1 } };
+
+	Coor source; source.setCoor(8, 0);
+	Coor dest; dest.setCoor(0, 0);
+	 
+	aSearch(map, source, dest);
+}
