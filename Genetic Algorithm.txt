@@ -1,0 +1,484 @@
+#include<iostream>
+#include<time.h>
+#include<queue>
+
+using namespace std;
+
+float targetFitness=6; int targetCycle=5;
+int limitWeight=20; int limitItem=12;
+int** listItem; int totalList;
+//item[0] = weight item[1] - value
+
+int randomInt(int lim)
+{
+	if (lim == 0)
+		lim = 1;
+	int temp = rand() % lim;
+	return temp;
+}
+
+class bag
+{
+protected:
+	float fitnessValue;
+	int** item;
+	int curWeight; int totalItem;
+	int totalValue;
+
+public:
+	bag()
+	{
+		item = new int*[limitItem];
+		for (int i = 0; i < limitItem; i++)
+			item[i] = new int[3];
+		curWeight = 0; totalItem = 0;
+		totalValue = 0;
+		fitnessValue = 0;
+	}
+
+	void calFitness()
+	{
+		//fitnessValue = (float)totalValue / ((float)curWeight + ((float)curWeight-(float)limitWeight));
+		fitnessValue = (float)totalValue / (float)curWeight;
+	}
+	float getFitnessValue()
+	{
+		return fitnessValue;
+	}
+	int getWeight()
+	{
+		return curWeight;
+	}
+	int getTotalItem()
+	{
+		return totalItem;
+	}
+	int getTotalValue()
+	{
+		return totalValue;
+	}
+	int getItemId(int index)
+	{
+		return item[index][2];
+	}
+	int getItemWeight(int index)
+	{
+		return item[index][0];
+	}
+	int getItemValue(int index)
+	{
+		return item[index][1];
+	}
+
+	void printItem()
+	{
+		for (int i = 0; i < totalItem; i++)
+			cout << "Id : " << item[i][2] << " Weight : " << item[i][0] << " Value : " << item[i][1] << endl;
+	}
+	void printFitnessValue()
+	{
+		cout << "Fitness: " << fitnessValue << endl;
+	}
+
+	bool checkDuplicateItem(int newId)
+	{
+		for (int i = 0; i < totalItem; i++)
+		{
+			if (item[i][2] == newId)
+				return 1;
+		}
+		return 0;
+	}
+
+	void crossGen(int point,bag father,bag mother)
+	{
+		int id;
+		for (int i = 0; i < point; i++)
+		{
+			id = mother.getItemId(i);
+			if (father.checkDuplicateItem(id) == 1)
+			{
+				addItem(father.getItemWeight(i), father.getItemValue(i), father.getItemId(i));
+			}
+			else
+				addItem(listItem[id][0], listItem[id][1], id);
+		}
+		for (int i = point; i < father.getTotalItem(); i++)
+		{
+			addItem(father.getItemWeight(i),father.getItemValue(i),father.getItemId(i));
+		}
+	}
+	void mutate()
+	{
+		int t = randomInt(100);
+		if (t < 10)
+		{
+			int id = randomInt(totalItem);
+			int target = randomInt(totalList);
+
+			while (checkDuplicateItem(target)==1)
+			{
+				target = randomInt(totalItem);
+			}
+
+			item[id][0] =listItem[target][0] ;
+			item[id][1] =listItem[target][1] ;
+			item[id][2] = target;
+		}
+	}
+
+	void addItem(int itemW,int itemV,int itemId)
+	{
+		if (totalItem < limitItem)
+		{
+			this->item[totalItem][0] = itemW;
+			this->item[totalItem][1] = itemV;
+			this->item[totalItem][2] = itemId;
+			totalItem++;
+			curWeight += itemW;
+			totalValue += itemV;
+			calFitness();
+		}
+	}
+	void clear()
+	{
+		for (int i = 0; i < totalItem;i++)
+		{
+			item[i][0] = NULL;
+			item[i][1] = NULL;
+			item[i][2] = NULL;
+		}
+		curWeight = 0;
+		totalItem = 0;
+		fitnessValue = 0;
+		totalValue = 0;
+	}
+
+	void operator =(bag partner)
+	{
+		for (int i = 0; i < partner.getTotalItem(); i++)
+		{
+			item[i][0] = partner.getItemWeight(i);
+			item[i][1] = partner.getItemValue(i);
+			item[i][2] = partner.getItemId(i);
+		}
+
+		curWeight = partner.getWeight();
+		totalItem = partner.getTotalItem();
+		fitnessValue = partner.getFitnessValue();
+		totalValue = partner.getTotalValue();
+	}
+
+};
+
+class population
+{
+protected:
+	bag* parent; bag best;
+	bag* child;
+	queue<int> keep;
+	float* prob; float totalFitness;
+	int total; 
+
+public:
+	population()
+	{
+		total = 6;
+		parent = new bag[limitItem];
+		child = new bag[limitItem];
+		prob = new float[limitItem];
+	}
+	population(int tot)
+	{
+		total = tot;
+		parent = new bag[limitItem];
+		child = new bag[limitItem];
+		prob = new float[limitItem];
+	}
+
+	void calculateProb()
+	{
+		int totalFitness = 0;
+		for (int i = 0; i < total; i++)
+		{
+			totalFitness += parent[i].getFitnessValue();
+		}
+
+		prob[0] =  parent[0].getFitnessValue()/totalFitness*100;
+		for(int i=1;i<total;i++)
+			prob[i]=prob[i-1] + parent[0].getFitnessValue()/totalFitness*100;
+	}
+	//float randomProb()
+	
+	void generateParent()
+	{
+		for (int i = 0; i < total; i++)
+		{
+			while (parent[i].getWeight() < limitWeight)
+			{
+				int index = randomInt(totalList);
+				if (parent[i].checkDuplicateItem(index) == false)
+					parent[i].addItem(listItem[index][0], listItem[index][1], index);
+			}
+		}
+	}
+
+	void printParent()
+	{
+		cout << "PARENT==============================================================" << endl;
+		for (int i = 0; i < total; i++)
+		{
+			parent[i].printItem();
+			parent[i].printFitnessValue();
+			cout << endl;
+		}
+	}
+	void printChild()
+	{
+		cout << "CHILD============================================================" << endl;
+		for (int i = 0; i < total; i++)
+		{
+			child[i].printItem();
+			child[i].printFitnessValue();
+			cout << endl;
+		}
+	}
+
+	void discardParent()
+	{
+		for (int i = 0; i < total; i++)
+			parent[i].clear();
+	}
+	void discardChild()
+	{
+		for (int i = 0; i < total; i++)
+			child[i].clear();
+	}
+	void rehabParent()
+	{
+		//Pick Only Child
+		discardParent();
+		for (int i = 0; i < total; i++)
+			parent[i] = child[i];
+		discardChild();
+
+		////Pick Best Gen
+		//bag* newGeneration; int tempCounter=0;
+		//newGeneration = new bag[total * 2];
+
+		////input ke pointer temp
+		//for (int i = 0; i < total; i++)
+		//{
+		//	newGeneration[tempCounter] = parent[i];
+		//	tempCounter++;
+		//}
+		//for (int i = 0; i < total; i++)
+		//{
+		//	newGeneration[tempCounter] = child[i];
+		//	tempCounter++;
+		//}
+
+		////sort temp
+		//for (int i = 0; i < total * 2; i++)
+		//	for (int j = 0; j < total * 2; j++)
+		//	{
+		//		bag temp;
+		//		if (newGeneration[i].getFitnessValue() > newGeneration[j].getFitnessValue())
+		//		{
+		//			temp = newGeneration[i];
+		//			newGeneration[i] = newGeneration[j];
+		//			newGeneration[j] = temp;
+		//		}
+		//	}
+
+		//discardParent();
+		//discardChild();
+
+		//for (int i = 0; i < total; i++)
+		//	parent[i] = newGeneration[i];
+	}
+
+	void pairParent()
+	{
+		calculateProb();
+		for (int i = 0; i < total/2; i++)
+		{
+			int t,j; float temp;
+			t = randomInt(100);
+			j = 0;
+			temp = prob[0];
+			while (temp<t)
+			{
+				temp += prob[j];
+				j++;
+			}
+			keep.push(j);
+
+			while (j == keep.back())
+			{
+				t = randomInt(100);
+				j = 0;
+				temp = prob[0];
+				while (temp < t)
+				{
+					temp += prob[j];
+					j++;
+				}
+			}
+			keep.push(j);
+		}
+	}
+	void crossParent(int h, int w, int& cou)
+	{
+		bag temp; int point;
+
+		if (parent[h].getTotalItem() < parent[w].getTotalItem())
+			point = parent[h].getTotalItem();
+		else
+			point = parent[w].getTotalItem();
+
+		point = randomInt(point);
+		child[cou].crossGen(point, parent[h], parent[w]); cou++;
+		child[cou].crossGen(point, parent[w], parent[h]); cou++;
+	}
+
+	void makeChild()
+	{
+		pairParent(); int cou = 0;
+		while(keep.empty()==0)
+		{
+			int h = keep.front(); keep.pop();
+			int w = keep.front(); keep.pop();
+			crossParent(h, w, cou);
+		}
+
+		for (int i = 0; i < total; i++)
+		{
+			child[i].mutate();
+		}
+
+		printChild();
+
+		rehabParent();
+	}
+
+	int evaluate(int &totalCycle)
+	{
+		//Untuk pake targetFitness
+		/*if (totalCycle > targetCycle)
+		{
+			int bestValue = 0; int t;
+			for (int i = 0; i < total; i++)
+			{
+				if (parent[i].getFitnessValue() >= targetFitness)
+				{
+					return i;
+				}
+				else if (parent[i].getFitnessValue() >= bestValue)
+				{
+					bestValue = parent[i].getFitnessValue();
+					t=i;
+				}
+			}
+			return t;
+		}
+		else
+		{
+			for (int i = 0; i < total; i++)
+			{
+				if (parent[i].getFitnessValue() >= targetFitness)
+				{
+					totalCycle = targetCycle;
+					return i;
+				}
+
+			}
+		}*/
+
+		//Fitness terbaik pukul rata
+		for (int i = 0; i < total; i++)
+		{
+			if (parent[i].getFitnessValue() > best.getFitnessValue())
+				best = parent[i];
+		}
+		return 0;
+
+	}
+	void cycle()
+	{
+		generateParent(); int result = 0;
+		for (int i = 0; i < targetCycle; i++)
+		{
+			//Print each Generation
+			cout << "=====================================================================" << endl;
+			cout<<"Generasi ke-"<<i+1<<endl;
+			print();
+			makeChild();
+			result = evaluate(i);
+		}
+
+		//Print last Generation
+		cout << "=====================================================================" << endl;
+		cout<<"Generasi Terakhir"<<endl;
+		print();
+
+
+		cout << "Best Result: "<<endl;
+		best.printItem();
+		best.printFitnessValue();
+		cout << endl;
+	}
+
+	void print()
+	{
+		/*cout << "PARENT: " << endl;
+		for (int i = 0; i < total; i++)
+		{
+			parent[i].printItem();
+			parent[i].printFitnessValue();
+			cout << endl;
+		}
+
+		cout << endl<<"CHILD: "<<endl;
+		for (int i = 0; i < total; i++)
+		{
+			child[i].printItem();
+			child[i].printFitnessValue();
+			cout << endl;
+		}*/
+
+		for (int i = 0; i < total; i++)
+		{
+			parent[i].printItem();
+			parent[i].printFitnessValue();
+			cout << endl;
+		}
+	}
+};
+
+
+void main()
+{
+	srand(time(NULL));
+	totalList = 12;
+	listItem = new int*[totalList];
+	for (int i = 0; i < totalList; i++)
+		listItem[i] = new int[2];
+
+	listItem[0][0] = 2; listItem[0][1] = 12;
+	listItem[1][0] = 11; listItem[1][1] = 20;
+	listItem[2][0] = 4; listItem[2][1] = 5;
+	listItem[3][0] = 5; listItem[3][1] = 11;
+	listItem[4][0] = 3; listItem[4][1] = 50;
+	listItem[5][0] = 3; listItem[5][1] = 15;
+	listItem[6][0] = 2; listItem[6][1] = 6;
+	listItem[7][0] = 2; listItem[7][1] = 4;
+	listItem[8][0] = 2; listItem[8][1] = 5;
+	listItem[9][0] = 3; listItem[9][1] = 25;
+	listItem[10][0] = 1; listItem[10][1] = 30;
+	listItem[11][0] = 7; listItem[11][1] = 10;
+
+	population gen(6);
+	gen.cycle();
+
+}
